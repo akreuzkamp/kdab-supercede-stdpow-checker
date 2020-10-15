@@ -54,8 +54,8 @@ public :
             auto expRng = Lexer::getAsCharRange(exponent->getSourceRange(), sm, lo);
             auto callRng = Lexer::getAsCharRange(callExpr->getSourceRange(), sm, lo);
 
-            std::string baseStr = Lexer::getSourceText(baseRng, sm, lo);
-            std::string expStr = Lexer::getSourceText(callRng, sm, lo);
+            auto baseStr = Lexer::getSourceText(baseRng, sm, lo);
+            auto expStr = Lexer::getSourceText(callRng, sm, lo);
 
             auto &DiagEngine = context->getDiagnostics();
             unsigned ID = DiagEngine.getDiagnosticIDs()->getCustomDiagID(
