@@ -19,7 +19,7 @@ using namespace clang::ast_matchers;
 using namespace clang::tooling;
 using namespace llvm;
 
-auto StdPowMatcher =
+auto stdPowMatcher =
     callExpr(
         callee(
             functionDecl(
@@ -35,13 +35,13 @@ class StdPowChecker : public MatchFinder::MatchCallback {
 public :
     StdPowChecker() = default;
 
-    void run(const MatchFinder::MatchResult &Result) override
+    void run(const MatchFinder::MatchResult &result) override
     {
-        ASTContext *context = Result.Context;
-        const CallExpr *callExpr = Result.Nodes.getNodeAs<CallExpr>("funcCall");
-        const FunctionDecl *callee = Result.Nodes.getNodeAs<FunctionDecl>("callee");
-        const Expr *base = Result.Nodes.getNodeAs<Expr>("base");
-        const Expr *exponent = Result.Nodes.getNodeAs<Expr>("exponent");
+        ASTContext *context = result.Context;
+        const CallExpr *callExpr = result.Nodes.getNodeAs<CallExpr>("funcCall");
+        const FunctionDecl *callee = result.Nodes.getNodeAs<FunctionDecl>("callee");
+        const Expr *base = result.Nodes.getNodeAs<Expr>("base");
+        const Expr *exponent = result.Nodes.getNodeAs<Expr>("exponent");
 
 
         if (!callExpr || !context || !context->getSourceManager().isWrittenInMainFile(callExpr->getBeginLoc()))
@@ -57,11 +57,11 @@ public :
             auto baseStr = Lexer::getSourceText(baseRng, sm, lo);
             auto expStr = Lexer::getSourceText(callRng, sm, lo);
 
-            auto &DiagEngine = context->getDiagnostics();
-            unsigned ID = DiagEngine.getDiagnosticIDs()->getCustomDiagID(
+            auto &diagEngine = context->getDiagnostics();
+            unsigned ID = diagEngine.getDiagnosticIDs()->getCustomDiagID(
                 DiagnosticIDs::Warning,
                 "std::pow is called with integer constant expression. Use utils::pow instead.");
-            DiagEngine.Report(exponent->getBeginLoc(), ID)
+            diagEngine.Report(exponent->getBeginLoc(), ID)
                 << FixItHint::CreateReplacement(callRng,
                                                 (llvm::Twine("utils::pow<") + expStr + ">(" + baseStr + ")").str()
                                                );
@@ -74,26 +74,26 @@ class SupercedeStdPowAction : public FixItAction {
 public:
     SupercedeStdPowAction()
     {
-        Finder.addMatcher(StdPowMatcher, &stdPowChecker);
+        m_finder.addMatcher(stdPowMatcher, &m_stdPowChecker);
     }
 
     std::unique_ptr<ASTConsumer>
     CreateASTConsumer(CompilerInstance &, StringRef) override {
-        return Finder.newASTConsumer();
+        return m_finder.newASTConsumer();
     }
 
 public:
-    MatchFinder Finder;
-    StdPowChecker stdPowChecker;
+    MatchFinder m_finder;
+    StdPowChecker m_stdPowChecker;
 };
 
 int main(int argc, const char **argv) {
-  CommonOptionsParser OptionsParser {
+  CommonOptionsParser optionsParser {
       argc, argv,
       llvm::cl::GeneralCategory
   };
-  ClangTool tool(OptionsParser.getCompilations(),
-                 OptionsParser.getSourcePathList());
+  ClangTool tool(optionsParser.getCompilations(),
+                 optionsParser.getSourcePathList());
 
   return tool.run(newFrontendActionFactory<SupercedeStdPowAction>().get());
 }
